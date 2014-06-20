@@ -3,6 +3,11 @@ import sqlite3
 DB = None
 CONN = None
 
+def connect_to_db():
+    global DB, CONN
+    CONN = sqlite3.connect("hackbright.db")
+    DB = CONN.cursor()
+
 def get_student_by_github(github):
     query = """SELECT first_name, last_name, github FROM Students WHERE github = ?"""
     DB.execute(query, (github,))
@@ -11,10 +16,7 @@ def get_student_by_github(github):
 Student: %s %s
 Github account: %s"""%(row[0], row[1], row[2])
 
-def connect_to_db():
-    global DB, CONN
-    CONN = sqlite3.connect("hackbright.db")
-    DB = CONN.cursor()
+
 
 def make_new_student(first_name, last_name, github):
     query = """INSERT into Students values (?, ?, ?)"""
@@ -30,6 +32,12 @@ def get_project_description(project_title):
 Project: %s 
 Project Description: %s""" % (row[0], row[1])
 
+def give_student_a_grade(github, project_title, grade):
+    query = """INSERT INTO Grades (student_github, project_title, grade) VALUES (?, ?, ?);"""
+    DB.execute(query, (github, project_title, grade))
+    CONN.commit()
+    print "Successfully added the grade: %r to %s" %(grade, project_title)
+
 
 def make_new_project(title, description, max_grade):
     query = """INSERT INTO Projects (title, description, max_grade) VALUES (?, ?, ?)"""
@@ -37,11 +45,30 @@ def make_new_project(title, description, max_grade):
     CONN.commit()
     print "Successfully added Project: %s" %title
 
+def get_grade_by_title(github, project_title):
+    query = """ SELECT student_github, project_title, grade FROM Grades WHERE student_github=(?) AND project_title=(?)"""
+    DB.execute(query, (github, project_title))
+    row = DB.fetchone()
+    print """\
+    Student Github: %s
+    Project title: %s
+    Grade: %d """ % (row[0], row[1], row[2])
+
+def get_all_grades_by_student(github):
+    query = """SELECT project_title, grade FROM Grades WHERE student_github = (?)"""
+    DB.execute(query, (github, ))
+    row = DB.fetchall()
+    print """ All grades for %s: """ % github
+    # for index in range(0, len(row)):
+    #     # for item in row[index]:
+    #     print """ %r """ % row[index]
+    print row
+
 def main():
     connect_to_db()
     command = None
     argument_list = []
-    
+
     while command != "quit":
         input_string = raw_input("HBA Database> ")
         temp_arg_list = input_string.split()
@@ -65,10 +92,16 @@ def main():
             get_student_by_github(*args) 
         elif command == "new_student":
             make_new_student(*args)
-        elif command == "Projects":
+        elif command == "projects":
             get_project_description(*args) 
         elif command == "new_project":
-            make_new_project(*args)   
+            make_new_project(*args)  
+        elif command == "grade":
+            get_grade_by_title(*args)
+        elif command == "new_grade":
+            give_student_a_grade(*args) 
+        elif command == "all_grades":
+            get_all_grades_by_student(*args)    
 
     CONN.close()
 
